@@ -49,7 +49,7 @@ def encontrar_salida(agente, laberinto, ruta_seguida):
         if laberinto[agente.posicion[0]][agente.posicion[1]] == "S":
             print("Encontré la salida :D")
             print("Ruta seguida por el agente:", ruta_seguida)
-            return
+            exit()
 
         elif agente.mover(movimiento, laberinto) != 0:
             encontrar_salida(agente, laberinto, ruta_seguida)
