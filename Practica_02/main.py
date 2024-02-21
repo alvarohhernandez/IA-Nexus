@@ -6,12 +6,9 @@ laberinto = [
     [0, 0, 0, 0],
     [1, 1, 0, "S"]
 ]
-visitado = [
-    [True, False, False, False],
-    [False, False, False, False],
-    [False, False, False, False],
-    [False, False, False, False]
-]
+
+# Creamos una matriz auxiliar de tamaño igual al laberinto, para almacenar los puntos visitados
+visitado = [[False] * len(laberinto[0]) for _ in range(len(laberinto))]
 
 class Agente:
     # Constructor del agente en una posición de la matriz
@@ -60,6 +57,9 @@ def encontrar_salida(agente, laberinto, ruta_seguida):
             contador += 1
             if contador == 4:
                 ruta_seguida.pop()
+                if not ruta_seguida:
+                    print("No existe una salida :(")
+                    exit()
                 ultimo = ruta_seguida[-1]
                 ruta_seguida.pop()
                 back = Agente([ultimo[0], ultimo[1]])
@@ -67,8 +67,33 @@ def encontrar_salida(agente, laberinto, ruta_seguida):
 
     print("iiiiii no encontré la salida")
 
+# Función auxiliar, recibe un laberinto y regresa la posición de entrada
+def encontrar_entrada(laberinto):
+    for fila in range(len(laberinto)):
+        for columna in range(len(laberinto[0])):
+            if laberinto[fila][columna] == "E":
+                return [fila, columna]
+    return None
+
+# Función auxiliar, recibe un laberinto y lo regresa estandarizado
+def parse_laberinto(laberinto):
+    for fila in range(len(laberinto)):
+        for columna in range(len(laberinto[0])):
+            if laberinto[fila][columna] == '0':
+                laberinto[fila][columna] = 0
+            if laberinto[fila][columna] == '1':
+                laberinto[fila][columna] = 1
+    return laberinto
+
+# Hacemos parsing del laberinto para estandarizar los valores '0' y '1' a 0 y 1
+laberinto = parse_laberinto(laberinto)
+# Obtenemos la posición de entrada del laberinto
+entrada = encontrar_entrada(laberinto)
+print(f"Entrada: {entrada}")
 # Crear una instancia de la clase Agente
-agente = Agente([0, 0])
+agente = Agente(entrada)
+# Marcamos la posición inicial como visitada en la matriz de visitados
+visitado[agente.posicion[0]][agente.posicion[1]] = True
 ruta = collections.deque([])
 
 # Llamar a la función para encontrar la salida
