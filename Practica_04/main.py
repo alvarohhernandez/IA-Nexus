@@ -37,11 +37,11 @@ def parse_laberinto(laberinto):
 def distancia_manhattan(pos1, pos2):
     return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
-# Regresa el costo de la ruta hasta ese momento
+# El costo g es el costo que toma recorrer desde el punto inicio hasta el nodo en cuestión
 def get_costo_g(ruta, actual):
+    # Consultamos el costo acumulado en la ruta, en caso de existir, o devolvemos 0 como default
     return ruta.get(actual, (0,0))[0] + 1
-
-# Recresa el costo estimado ente un vecino y la salida.
+# El costo h es la distancia que toma llegar desde el nodo vecino hacia la salida
 def get_costo_h(vecino, fin):
     return distancia_manhattan(vecino, fin)
 
@@ -71,31 +71,39 @@ def encuentra_salida(agente, laberinto):
     inicio = agente.inicio
     fin = agente.fin
 
+    # Iniciamos nuestra cola de prioridad con el nodo inicio
     heapq.heappush(cola_prioridad, (0, inicio))
 
     while cola_prioridad:
         _, actual = heapq.heappop(cola_prioridad)
 
-        if actual == fin: #terminamos el loop si llegamos a la salida
+        # Verificamos si el nodo actual es el nodo final, en cuyo caso terminamos
+        if actual == fin:
             break
 
         vecinos = encuentra_vecinos(actual, laberinto, visitados)
 
-        # Calculamos el costo de todos los vecinos
+        # Para cada vecino, obtenemos el costo f, definido por la suma del costo g + costo h
         for vecino in vecinos:
             costo_g = get_costo_g(ruta, actual)
             costo_h = get_costo_h(vecino, fin)
             costo_f = get_costo_f(costo_g, costo_h)
 
+            # En caso de que el nodo vecino no exista en la ruta o que su costo f sea menor al menor registrado
+            # almacenamos el costo g, el costo f y el nodo origen a la ruta, y lo agregamos también a la cola de
+            # prioridad
             if vecino not in ruta or costo_f < ruta[vecino][1]:
                 ruta[vecino] = (costo_g, costo_f, actual)
                 heapq.heappush(cola_prioridad, (costo_f, vecino))
-    
+
+    # Si al termino no estamos en el nodo fin, no encontramos una ruta
     if actual != fin:
         return {}, -1
     else:
-        ruta_final = reconstruir_ruta(ruta, inicio, fin) # ruta seguida
-        costo_final = ruta[fin][0] # costo de la ruta seguida
+        # Obtenemos la mejor ruta a partir de los costos almacenados, así como los nodos origen
+        # de los nodos con menor costo.
+        ruta_final = reconstruir_ruta(ruta, inicio, fin)
+        costo_final = ruta[fin][0]
         return ruta_final, costo_final
 
 # Reconstruye la ruta seguida para poder mostrala en terminal.
