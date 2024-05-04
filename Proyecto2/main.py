@@ -1,33 +1,33 @@
 import nltk
+import time
 import string
 import pandas as pd
+from sklearn.svm import SVC
 import matplotlib.pyplot as plt
 from nltk.corpus import stopwords
+from sklearn.decomposition import PCA
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
+from imblearn.over_sampling import SMOTE
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import cross_val_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import cross_val_predict
 from imblearn.under_sampling import RandomUnderSampler
 from sklearn.feature_extraction.text import TfidfVectorizer
+
 
 target_cols = ['clasismo','racismo','sexismo','otros','contenido_inapropiado','ninguna_de_las_anteriores']
 
 # Carga y exploración de los datos
 dfTexts = pd.read_csv('train_data.csv', names=['image', 'text'], header=None)
-print(dfTexts.head());
 
 dfLabels = pd.read_table('train_labels_subtask_2.csv', delimiter=',', names=target_cols, header=None)
-print(dfLabels.head());
 
-d = {'clasismo': dfLabels['clasismo'].values,
-     'racismo': dfLabels['racismo'].values,
-     'sexismo': dfLabels['sexismo'].values,
-     'otros': dfLabels['otros'].values,
-     'contenido_inapropiado': dfLabels['contenido_inapropiado'].values,
-     'ninguna_de_las_anteriores': dfLabels['ninguna_de_las_anteriores'].values,
-     'text': dfTexts['text'].values,
-     'image': dfTexts['image'].values}
-
-data_train = pd.DataFrame(data = d)
-print(data_train.head())
+data_train = pd.concat([dfLabels, dfTexts], axis=1)
 
 # Verificamos si el dataset está balanceado
 class_counts = data_train.iloc[:, :-2].sum()
@@ -43,83 +43,43 @@ plt.xticks(rotation=45)
 plt.show()
 
 # Cálculo de proporciones
-total_memes = data_train.shape[0]
+total_memes = len(data_train)
 class_proportions = class_counts / total_memes
 print("Proporción de memes por clase:")
 print(class_proportions)
 
 # Dado que la clase "ninguna_de_las_anteriore" es significativamente
 # más grande que las otras clases, podemos determinar que nuestro
-# conjunto de datos está debalanceado. Para abordar este problema,
-# aplicaremos la técnica de submuestreo (undersampling) para igualar
-# las proporciones entre las clases.
-X = data_train['text']
-y = data_train.iloc[:, :-2]
-
-rus = RandomUnderSampler(random_state=42)
-X_resampled, y_resampled = rus.fit_resample(X.values.reshape(-1, 1), y.values)
-
-# Convertimos los array resultantes de nuevo a un DataFrame
-resampled_data = pd.DataFrame(y_resampled, columns=y.columns)
-resampled_data = pd.concat([resampled_data, pd.DataFrame(X_resampled, columns=['text'])], axis=1)
-
-# Verificamos si el dataset está balancedado
-class_counts = resampled_data.iloc[:, :-2].sum()
-print(class_counts)
-
-# Verificamos nuevamente las proporciones después del submuestreo
-total_memes = resampled_data.shape[0]
-resampled_class_proportions = class_counts / total_memes
-print("Proporción de memes por clase después de submuestreo:")
-print(resampled_class_proportions)
-
-# Validamos nuevamente en un gráfico de barras
-plt.figure(figsize=(8, 6))
-class_counts.plot(kind='bar', color='skyblue')
-plt.title('Distribución de memes por clase')
-plt.xlabel('Clases')
-plt.ylabel('Cantidad de memes')
-plt.xticks(rotation=45)
-plt.show()
-
-# Después de aplicar submuestreo, podemos ver que las proporciones de
-# memes por clase después del submuestreo son todas iguales, lo que
-# indica que el conjunto de datos está balanceado. Esto ayudara a
-# mejorar el rendimiento del modelo de clasificación al reducir el
-# sesgo hacias las clases más grandes.
+# conjunto de datos está desbalanceado. Para abordar este problema
+# usaremos SMOTE, una técnica para abordar el desbalance de clases al
+# generar ejemplos sintéticos de la clase minoritaria.
 
 # Ahora, realizamos el proceso de limpieza y preprocesamiento de datos
 # antes de alimentarlos a un modelo de clasificación.
-print(resampled_data['text'])
 
-# Realizamos Tokenización
+# Preprocesamiento de texto
 nltk.download('punkt')
-corpus = resampled_data['text'].apply(lambda x: word_tokenize(x.lower()))
-print(corpus)
-
-# Eliminamos stopwords
 nltk.download('stopwords')
-stop_words = set(stopwords.words('spanish'))
-corpus = corpus.apply(lambda x: [word for word in x if word not in stop_words])
-print(corpus)
-
-# Realizamos lematización
 nltk.download('wordnet')
+stop_words = set(stopwords.words('spanish'))
 lemmatizer = WordNetLemmatizer()
-corpus = corpus.apply(lambda x: [lemmatizer.lemmatize(word) for word in x])
-print(corpus)
 
-# Eliminamos caracteres especiales y puntuación
-corpus = corpus.apply(lambda x: [word for word in x if word not in string.punctuation])
-print(corpus)
+# Función para preprocesar texto
+def preprocess_text(text):
+    # Realizamos Tokenización
+    corpus = word_tokenize(text.lower())
+    # Eliminamos stopwords
+    corpus = [word for word in corpus if word not in stop_words]
+    # Realizamos lematización
+    corpus = [lemmatizer.lemmatize(word) for word in corpus]
+    # Eliminamos caracteres especiales y puntuación
+    corpus = [word for word in corpus if word not in string.punctuation]
+    # Eliminamos corpus vacíos en caso de existir
+    corpus = [word for word in corpus if word.strip()]
+    # Convertimos corpus nuevamente a texto
+    return ' '.join(corpus)
 
-# Eliminamos tokens vacíos en caso de existir
-corpus = corpus.apply(lambda x: [word for word in x if word.strip()])
-print(corpus)
-
-# Convertimos tokens nuevamente a texto
-corpus = corpus.apply(lambda x: ' '.join(x))
-print(corpus)
+data_train['text'] = data_train['text'].apply(preprocess_text)
 
 ## Representación de Texto
 
@@ -134,20 +94,74 @@ print(corpus)
 # para resaltar términos importantes, que es precisamente lo que buscamos
 # al categorizar memes inapropiados.
 
-X_resampled = corpus
-y_resampled = resampled_data.iloc[:, :-1]
-
 # Inicializamos el vectorizador TF-IDF
 vectorizer = TfidfVectorizer()
-
 # Aplicamos el vectorizador al texto preprocesado
-X = vectorizer.fit_transform(X_resampled)
+X = vectorizer.fit_transform(data_train['text'])
 
-# Vamos las dimensiones del conjunto de datos vectorizado
-print("Dimensiones del conjunto de datos vectorizado:", X.shape)
+# Aplicamos SMOTE para balancear las clases
+smote = SMOTE(random_state=42)
+X_resampled, y_resampled = smote.fit_resample(X, data_train.iloc[:, :-2].idxmax(axis=1))
 
-# La salida nos indica que tenemos 264 documentos (filas) y 1812
-# características (columnas) después de la vectorización.
-# Esto signfica que cada documento ha sido representado como un vector
-# de caracteristicas con una longitud de 1812, donde cada diomesión del
-# vector corresponde a una palabra única en nuestro conjunto de datos.
+# 1. Conteo de muestras por clase
+class_counts = pd.Series(y_resampled).value_counts()
+print("Conteo de muestras por clase:")
+print(class_counts)
+
+# 2. Visualización
+plt.figure(figsize=(8, 6))
+class_counts.plot(kind='bar', color='skyblue')
+plt.title('Distribución de clases después de SMOTE')
+plt.xlabel('Clases')
+plt.ylabel('Número de muestras')
+plt.xticks(rotation=45)
+plt.show()
+
+# Dividir el conjunto de datos en entrenamiento y prueba
+X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled_encoded, test_size=0.2, random_state=42)
+
+# Selección del modelo
+#
+# Usaremos un diagrama de dispersión para tratar de elegir el modelo
+# más adecuado. Un diagrama de dispersión proporciona información sobre
+# la distribución de las clases en un espacio de menor dimesión generado
+# por PCA. 
+
+# Reducción de dimensionalidad con PCA
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_resampled.toarray())
+
+# Inicializar el codificador de etiquetas
+label_encoder = LabelEncoder()
+
+# Convertir los nombres de las clases a valores numéricos
+y_resampled_encoded = label_encoder.fit_transform(y_resampled)
+
+# Creamos un diagrama de dispersión para visualizar los datos en 2D
+plt.figure(figsize=(10, 6))
+plt.scatter(X_pca[:, 0], X_pca[:, 1], c=y_resampled_encoded, cmap='viridis')
+plt.xlabel('Componente Principal 1')
+plt.ylabel('Componente Principal 2')
+plt.title('Diagrama de Dispersión con PCA')
+plt.colorbar(label='Clase')
+plt.show()
+
+# Se selecciona Random Forest como módelo de clasificación:
+# El diagrama de dispersión generado por PCA sugiere que las clases
+# pueden no estar perfectamente serparadas por una frontera lineal.
+# Random Forest es robusto ante datos no lineales, ya que construye
+# múltiples árboles de decisión y combina sus resultados, lo que puede
+# capturar relaciones no lineales entre las características y las clases.
+
+# Random Fores maneja naturalmnete características irrelevantes o
+# redundantes.
+
+# Random Forest tiende a tener un buen rendimiento en conjuntos de datos
+# grandes y complejos, y es menos propenso al sobreajute en comparación
+# con modelos como los árboles de decisión individuales.
+
+# Aunque hemos utilizado SMOTE para abordar el desbalance de clases,
+# Random Forest tambien puede manejar conjuntos de datos desbalanceados
+# de manera efectiva. Además, la combinación de múltiples árboles en
+# Random Forest ayuda a reducir el impacto de las clase mayoritaria en
+# la clasificación.

@@ -1,0 +1,201 @@
+import nltk
+import string
+import pandas as pd
+from sklearn.svm import SVC
+import matplotlib.pyplot as plt
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_predict
+from imblearn.under_sampling import RandomUnderSampler
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+
+target_cols = ['clasismo','racismo','sexismo','otros','contenido_inapropiado','ninguna_de_las_anteriores']
+
+# Carga y exploración de los datos
+dfTexts = pd.read_csv('train_data.csv', names=['image', 'text'], header=None)
+print(dfTexts.head());
+
+dfLabels = pd.read_table('train_labels_subtask_2.csv', delimiter=',', names=target_cols, header=None)
+print(dfLabels.head());
+
+d = {'clasismo': dfLabels['clasismo'].values,
+     'racismo': dfLabels['racismo'].values,
+     'sexismo': dfLabels['sexismo'].values,
+     'otros': dfLabels['otros'].values,
+     'contenido_inapropiado': dfLabels['contenido_inapropiado'].values,
+     'ninguna_de_las_anteriores': dfLabels['ninguna_de_las_anteriores'].values,
+     'text': dfTexts['text'].values,
+     'image': dfTexts['image'].values}
+
+data_train = pd.DataFrame(data = d)
+print(data_train.head())
+
+# Verificamos si el dataset está balanceado
+class_counts = data_train.iloc[:, :-2].sum()
+print(class_counts)
+
+# Visualizamos la distribución de clases en una gráfica de barras
+plt.figure(figsize=(8, 6))
+class_counts.plot(kind='bar', color='skyblue')
+plt.title('Distribución de memes por clase')
+plt.xlabel('Clases')
+plt.ylabel('Cantidad de memes')
+plt.xticks(rotation=45)
+plt.show()
+
+# Cálculo de proporciones
+total_memes = data_train.shape[0]
+class_proportions = class_counts / total_memes
+print("Proporción de memes por clase:")
+print(class_proportions)
+
+# Dado que la clase "ninguna_de_las_anteriore" es significativamente
+# más grande que las otras clases, podemos determinar que nuestro
+# conjunto de datos está debalanceado. Para abordar este problema,
+# aplicaremos la técnica de submuestreo (undersampling) para igualar
+# las proporciones entre las clases.
+X = data_train['text']
+y = data_train.iloc[:, :-2]
+
+rus = RandomUnderSampler(random_state=42)
+X_resampled, y_resampled = rus.fit_resample(X.values.reshape(-1, 1), y.values)
+
+# Convertimos los array resultantes de nuevo a un DataFrame
+resampled_data = pd.DataFrame(y_resampled, columns=y.columns)
+resampled_data = pd.concat([resampled_data, pd.DataFrame(X_resampled, columns=['text'])], axis=1)
+
+# Verificamos si el dataset está balancedado
+class_counts = resampled_data.iloc[:, :-2].sum()
+print(class_counts)
+
+# Verificamos nuevamente las proporciones después del submuestreo
+total_memes = resampled_data.shape[0]
+resampled_class_proportions = class_counts / total_memes
+print("Proporción de memes por clase después de submuestreo:")
+print(resampled_class_proportions)
+
+# Validamos nuevamente en un gráfico de barras
+plt.figure(figsize=(8, 6))
+class_counts.plot(kind='bar', color='skyblue')
+plt.title('Distribución de memes por clase')
+plt.xlabel('Clases')
+plt.ylabel('Cantidad de memes')
+plt.xticks(rotation=45)
+plt.show()
+
+# Después de aplicar submuestreo, podemos ver que las proporciones de
+# memes por clase después del submuestreo son todas iguales, lo que
+# indica que el conjunto de datos está balanceado. Esto ayudara a
+# mejorar el rendimiento del modelo de clasificación al reducir el
+# sesgo hacias las clases más grandes.
+
+# Ahora, realizamos el proceso de limpieza y preprocesamiento de datos
+# antes de alimentarlos a un modelo de clasificación.
+print(resampled_data['text'])
+
+# Realizamos Tokenización
+nltk.download('punkt')
+corpus = resampled_data['text'].apply(lambda x: word_tokenize(x.lower()))
+print(corpus)
+
+# Eliminamos stopwords
+nltk.download('stopwords')
+stop_words = set(stopwords.words('spanish'))
+corpus = corpus.apply(lambda x: [word for word in x if word not in stop_words])
+print(corpus)
+
+# Realizamos lematización
+nltk.download('wordnet')
+lemmatizer = WordNetLemmatizer()
+corpus = corpus.apply(lambda x: [lemmatizer.lemmatize(word) for word in x])
+print(corpus)
+
+# Eliminamos caracteres especiales y puntuación
+corpus = corpus.apply(lambda x: [word for word in x if word not in string.punctuation])
+print(corpus)
+
+# Eliminamos tokens vacíos en caso de existir
+corpus = corpus.apply(lambda x: [word for word in x if word.strip()])
+print(corpus)
+
+# Convertimos tokens nuevamente a texto
+corpus = corpus.apply(lambda x: ' '.join(x))
+print(corpus)
+
+## Representación de Texto
+
+# Convertimos los textos preprocesados en vectores numéricos que puedan
+# ser entendidos por el modelo. Para ello utilizamos TF-IDF (Term
+# Frequency-Inverse Document Frequency). ¿Por qué?
+#
+# TF-IDF es computacionalmente más eficiente para conjuntos de datos
+# grandes.
+# TF-IDF asigna pesos a las palabras en función de su importancia relativa
+# en el documento y en el conjunto de documentos, lo que puede ser útil
+# para resaltar términos importantes, que es precisamente lo que buscamos
+# al categorizar memes inapropiados.
+
+X_resampled = corpus
+y_resampled = resampled_data.iloc[:, :-1]
+
+# Inicializamos el vectorizador TF-IDF
+vectorizer = TfidfVectorizer()
+
+# Aplicamos el vectorizador al texto preprocesado
+X = vectorizer.fit_transform(X_resampled)
+
+# Vamos las dimensiones del conjunto de datos vectorizado
+print("Dimensiones del conjunto de datos vectorizado:", X.shape)
+
+# La salida nos indica que tenemos 264 documentos (filas) y 1812
+# características (columnas) después de la vectorización.
+# Esto signfica que cada documento ha sido representado como un vector
+# de caracteristicas con una longitud de 1812, donde cada diomesión del
+# vector corresponde a una palabra única en nuestro conjunto de datos.
+
+# Evaluación de los modelos de clasificación
+
+# Para seleccionar un modelo de clasificación adecuado, es importante
+# considerar diversos factores, como el tamaño del conjunto de datos,
+# la naturaleza de los datos y la complejidad del problema. Para
+# evaluar el rendimiento de los modelos, usaremos diagramas de dispersión
+# y curvas de distribución, como técnicas de visualización.
+
+# Comparamos el rendimiento utilizando un diagrama de dispersión
+# de los resultados de validación cruzada:
+
+# Modelos a evaluar
+models = {
+    "Logistic Regression": LogisticRegression(),
+    "Random Forest": RandomForestClassifier(),
+    "Support Vector Machine": SVC()
+}
+
+# Combina múltiples columnas de etiquetas en una sola columna
+y_resampled_combined = y_resampled.idxmax(axis=1)
+print(y_resampled_combined)
+
+# Realizamos validación cruzada y obtenemos las predicciones
+predictions = {}
+
+for name, model in models.items():
+    y_pred = cross_val_predict(model, X, y_resampled_combined, cv=5)
+    predictions[name] = y_pred
+
+# Calculamos la precisión de cada modelo
+accuracies = {name: accuracy_score(y_resampled, y_pred) for name, y_pred in predictions.items()}
+
+# Creamos un diagrama de dispersión
+plt.figure(figsize=(10, 6))
+plt.bar(accuracies.keys(), accuracies.values(), color='skyblue')
+plt.xlabel('Modelos')
+plt.ylabel('Precisión')
+plt.title('Precisión de Modelos de Clasificación')
+plt.ylim(0, 1)
+plt.xticks(rotation=45)
+plt.show()
