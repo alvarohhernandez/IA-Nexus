@@ -1,5 +1,6 @@
 import nltk
 import time
+import joblib
 import string
 import pandas as pd
 from sklearn.svm import SVC
@@ -206,3 +207,12 @@ def evaluar_modelo(modelo, X_test, y_test):
 # Evaluamos el modelo Random Forest
 print("Random Forest:")
 evaluar_modelo(random_forest, X_test, y_test)
+
+# Guardar el modelo entrenado
+joblib.dump(random_forest, 'modelo_random_forest.pkl')
+
+# Guardar el vectorizador TF-IDF
+joblib.dump(vectorizer, 'vectorizador_tfidf.pkl')
+
+# Guardar el codificador de etiquetas
+joblib.dump(label_encoder, 'codificador_etiquetas.pkl')
