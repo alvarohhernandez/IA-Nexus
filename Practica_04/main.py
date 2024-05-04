@@ -5,20 +5,24 @@ class Agente:
         self.inicio = inicio
         self.fin = fin
 
+# Busca la entrada de el laberinto 
 def encontrar_entrada(laberinto):
     for fila in range(len(laberinto)):
         for columna in range(len(laberinto[0])):
-            if laberinto[fila][columna] == "E":
+            if laberinto[fila][columna] == "E": #La cadena 'E' determina la entrada
                 return (fila, columna)
     return None
 
+# Busca la salida de el laberinto 
 def encontrar_salida(laberinto):
     for fila in range(len(laberinto)):
         for columna in range(len(laberinto[0])):
-            if laberinto[fila][columna] == "S":
+            if laberinto[fila][columna] == "S": #La cadena 'S' determina la entrada
                 return (fila, columna)
     return None
 
+# Transforma los strings o caracteres '1' y '0'
+# de el laberinto en ints
 def parse_laberinto(laberinto):
     for fila in range(len(laberinto)):
         for columna in range(len(laberinto[0])):
@@ -28,6 +32,8 @@ def parse_laberinto(laberinto):
                 laberinto[fila][columna] = 1
     return laberinto
 
+
+# Calcula el costo estimado entre un punto y otro 
 def distancia_manhattan(pos1, pos2):
     return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
@@ -39,9 +45,12 @@ def get_costo_g(ruta, actual):
 def get_costo_h(vecino, fin):
     return distancia_manhattan(vecino, fin)
 
+# Calcula la funcion de costo
 def get_costo_f(g,h):
     return g + h
 
+# Regresa una lista con los vecinos de la posicion actual.
+# Vecino= Casilla distinta de 1 y que no ha sido visitada.
 def encuentra_vecinos(pos, laberinto, visitados):
     vecinos = []
     x, y = pos
@@ -97,6 +106,7 @@ def encuentra_salida(agente, laberinto):
         costo_final = ruta[fin][0]
         return ruta_final, costo_final
 
+# Reconstruye la ruta seguida para poder mostrala en terminal.
 def reconstruir_ruta(ruta, inicio, fin):
     ruta_final = []
     actual = fin
@@ -112,6 +122,7 @@ def reconstruir_ruta(ruta, inicio, fin):
     
     return ruta_final
 
+#laberinto de prueba
 laberinto = [
     [0, 0, 0, 1, "S"],
     [0, 1, 0, 0, 0],
