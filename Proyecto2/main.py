@@ -117,9 +117,6 @@ plt.ylabel('Número de muestras')
 plt.xticks(rotation=45)
 plt.show()
 
-# Dividir el conjunto de datos en entrenamiento y prueba
-X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled_encoded, test_size=0.2, random_state=42)
-
 # Selección del modelo
 #
 # Usaremos un diagrama de dispersión para tratar de elegir el modelo
@@ -164,4 +161,7 @@ plt.show()
 # Random Forest tambien puede manejar conjuntos de datos desbalanceados
 # de manera efectiva. Además, la combinación de múltiples árboles en
 # Random Forest ayuda a reducir el impacto de las clase mayoritaria en
-# la clasificación.
+# la clasificació
+
+# Dividir el conjunto de datos en entrenamiento y prueba
+X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled_encoded, test_size=0.2, random_state=42)
