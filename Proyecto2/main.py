@@ -6,6 +6,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from imblearn.under_sampling import RandomUnderSampler
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 target_cols = ['clasismo','racismo','sexismo','otros','contenido_inapropiado','ninguna_de_las_anteriores']
 
@@ -128,3 +129,25 @@ print(corpus)
 #
 # TF-IDF es computacionalmente más eficiente para conjuntos de datos
 # grandes.
+# TF-IDF asigna pesos a las palabras en función de su importancia relativa
+# en el documento y en el conjunto de documentos, lo que puede ser útil
+# para resaltar términos importantes, que es precisamente lo que buscamos
+# al categorizar memes inapropiados.
+
+X_resampled = corpus
+y_resampled = resampled_data.iloc[:, :-1]
+
+# Inicializamos el vectorizador TF-IDF
+vectorizer = TfidfVectorizer()
+
+# Aplicamos el vectorizador al texto preprocesado
+X = vectorizer.fit_transform(X_resampled)
+
+# Vamos las dimensiones del conjunto de datos vectorizado
+print("Dimensiones del conjunto de datos vectorizado:", X.shape)
+
+# La salida nos indica que tenemos 264 documentos (filas) y 1812
+# características (columnas) después de la vectorización.
+# Esto signfica que cada documento ha sido representado como un vector
+# de caracteristicas con una longitud de 1812, donde cada diomesión del
+# vector corresponde a una palabra única en nuestro conjunto de datos.
