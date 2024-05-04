@@ -5,12 +5,17 @@ import pandas as pd
 from sklearn.svm import SVC
 import matplotlib.pyplot as plt
 from nltk.corpus import stopwords
+from sklearn.metrics import f1_score
 from sklearn.decomposition import PCA
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from imblearn.over_sampling import SMOTE
+from sklearn.metrics import recall_score
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report
 from sklearn.model_selection import cross_val_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
@@ -165,3 +170,39 @@ plt.show()
 
 # Dividir el conjunto de datos en entrenamiento y prueba
 X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled_encoded, test_size=0.2, random_state=42)
+
+# Definimos el modelo
+random_forest = RandomForestClassifier(random_state=42)
+
+# Entrenamos el modelo con el conjunto de entrenamiento
+random_forest.fit(X_train, y_train)
+
+# Función para evaluar un modelo y mostrar las métricas y la
+# matriz de confusión.
+def evaluar_modelo(modelo, X_test, y_test):
+    # Predecir las etiquetas en el conjunto de prueba
+    y_pred = modelo.predict(X_test)
+
+    # Calcular métricas individuales
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred, average=None)
+    recall = recall_score(y_test, y_pred, average=None)
+    f1 = f1_score(y_test, y_pred, average=None)
+
+    # Mostrar métricas individuales
+    print("Accuracy:", accuracy)
+    print("Precisión:", precision)
+    print("Recall:", recall)
+    print("F1 Score:", f1)
+
+    # Mostrar métricas con classification_report
+    print(classification_report(y_test, y_pred, target_names=target_cols))
+
+    # Mostrar matriz de confusión
+    matriz = confusion_matrix(y_test, y_pred)
+    print("Matriz de Confusión:")
+    print(matriz)
+
+# Evaluamos el modelo Random Forest
+print("Random Forest:")
+evaluar_modelo(random_forest, X_test, y_test)
