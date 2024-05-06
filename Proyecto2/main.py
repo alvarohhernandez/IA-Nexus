@@ -1,15 +1,11 @@
-import nltk
 import time
 import joblib
-import string
 import pandas as pd
 from sklearn.svm import SVC
 import matplotlib.pyplot as plt
-from nltk.corpus import stopwords
+from utils import preprocess_text
 from sklearn.metrics import f1_score
 from sklearn.decomposition import PCA
-from nltk.tokenize import word_tokenize
-from nltk.stem import WordNetLemmatizer
 from imblearn.over_sampling import SMOTE
 from sklearn.metrics import recall_score
 from sklearn.metrics import accuracy_score
@@ -62,28 +58,6 @@ print(class_proportions)
 
 # Ahora, realizamos el proceso de limpieza y preprocesamiento de datos
 # antes de alimentarlos a un modelo de clasificación.
-
-# Preprocesamiento de texto
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
-stop_words = set(stopwords.words('spanish'))
-lemmatizer = WordNetLemmatizer()
-
-# Función para preprocesar texto
-def preprocess_text(text):
-    # Realizamos Tokenización
-    corpus = word_tokenize(text.lower())
-    # Eliminamos stopwords
-    corpus = [word for word in corpus if word not in stop_words]
-    # Realizamos lematización
-    corpus = [lemmatizer.lemmatize(word) for word in corpus]
-    # Eliminamos caracteres especiales y puntuación
-    corpus = [word for word in corpus if word not in string.punctuation]
-    # Eliminamos corpus vacíos en caso de existir
-    corpus = [word for word in corpus if word.strip()]
-    # Convertimos corpus nuevamente a texto
-    return ' '.join(corpus)
 
 data_train['text'] = data_train['text'].apply(preprocess_text)
 
@@ -167,7 +141,7 @@ plt.show()
 # Random Forest tambien puede manejar conjuntos de datos desbalanceados
 # de manera efectiva. Además, la combinación de múltiples árboles en
 # Random Forest ayuda a reducir el impacto de las clase mayoritaria en
-# la clasificació
+# la clasificació.
 
 # Dividir el conjunto de datos en entrenamiento y prueba
 X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled_encoded, test_size=0.2, random_state=42)
